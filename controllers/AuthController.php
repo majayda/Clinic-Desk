@@ -23,14 +23,19 @@ final class AuthController extends BaseController
         require_post_csrf();
 
         try {
-            $user = (new UserModel())->findByEmail(trim($_POST['email'] ?? ''));
+            $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+            $user = (new UserModel())->findByEmail($email);
         } catch (RuntimeException) {
             flash('danger', 'Database connection failed. Please start MySQL and import database/schema.sql.');
             redirect(url('auth', 'login'));
         }
 
-        if (!$user || !(int) $user['is_active'] || !password_verify($_POST['password'] ?? '', $user['password'])) {
+        if (!$user || !password_verify($_POST['password'] ?? '', $user['password'])) {
             flash('danger', 'Invalid credentials.');
+            redirect(url('auth', 'login'));
+        }
+        if (!(int) $user['is_active']) {
+            flash('danger', 'Account suspended. Contact admin.');
             redirect(url('auth', 'login'));
         }
         Auth::login($user);
@@ -39,6 +44,10 @@ final class AuthController extends BaseController
 
     public function logout(): void
     {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect(url());
+        }
+        require_post_csrf();
         Auth::logout();
     }
 }

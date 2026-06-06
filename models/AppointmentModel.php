@@ -7,12 +7,14 @@ final class AppointmentModel extends BaseModel
 {
     private function baseSelect(): string
     {
-        return "SELECT a.*, p.name patient_name, p.email patient_email, du.name doctor_name, s.name specialization
+        return "SELECT a.*, p.name patient_name, p.email patient_email, du.name doctor_name, s.name specialization,
+                       pr.id prescription_id, pr.file_path prescription_file
                 FROM appointments a
                 JOIN users p ON p.id=a.patient_id
                 JOIN doctors d ON d.id=a.doctor_id
                 JOIN users du ON du.id=d.user_id
-                JOIN specializations s ON s.id=d.specialization_id";
+                JOIN specializations s ON s.id=d.specialization_id
+                LEFT JOIN prescriptions pr ON pr.appointment_id=a.id";
     }
 
     public function find(int $id): ?array
@@ -68,6 +70,11 @@ final class AppointmentModel extends BaseModel
         return $this->rows($this->execute($this->baseSelect() . $where . ' ORDER BY a.appt_date, a.appt_time', $types, $params));
     }
 
+    public function todayForDoctor(int $doctorId): array
+    {
+        return $this->rows($this->execute($this->baseSelect() . ' WHERE a.doctor_id=? AND a.appt_date=CURDATE() ORDER BY a.appt_time', 'i', [$doctorId]));
+    }
+
     public function dashboardAdmin(): array
     {
         return [
@@ -93,6 +100,7 @@ final class AppointmentModel extends BaseModel
     {
         return [
             'active' => $this->rows($this->execute($this->baseSelect() . " WHERE a.patient_id=? AND a.status IN ('pending','confirmed') ORDER BY a.appt_date,a.appt_time", 'i', [$patientId])),
+            'pending' => $this->row($this->execute("SELECT COUNT(*) total FROM appointments WHERE patient_id=? AND status='pending'", 'i', [$patientId]))['total'] ?? 0,
             'completed' => $this->row($this->execute("SELECT COUNT(*) total FROM appointments WHERE patient_id=? AND status='completed'", 'i', [$patientId]))['total'] ?? 0,
             'prescriptions' => $this->row($this->execute('SELECT COUNT(*) total FROM prescriptions pr JOIN appointments a ON a.id=pr.appointment_id WHERE a.patient_id=?', 'i', [$patientId]))['total'] ?? 0,
         ];
@@ -136,4 +144,3 @@ final class AppointmentModel extends BaseModel
         return [$conditions ? ' WHERE ' . implode(' AND ', $conditions) : '', $types, $params];
     }
 }
-

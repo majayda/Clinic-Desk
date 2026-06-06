@@ -53,13 +53,13 @@ final class SpecializationController extends BaseController
     {
         Auth::requireRole('admin');
         require_post_csrf();
-        try {
-            $this->specializations->delete((int) $_POST['id']);
-            flash('success', 'Specialization deleted.');
-        } catch (RuntimeException) {
+        $id = (int) $_POST['id'];
+        if (!$this->specializations->isSafeToDelete($id)) {
             flash('danger', 'This specialization is linked to doctors and cannot be deleted.');
+            redirect(url('specializations'));
         }
+        $this->specializations->delete($id);
+        flash('success', 'Specialization deleted.');
         redirect(url('specializations'));
     }
 }
-

@@ -32,7 +32,7 @@ final class DoctorController extends BaseController
         Auth::requireRole('admin');
         require_post_csrf();
         $photo = upload_image('photo', 'doctor_photos', 'doctor');
-        $this->doctors->create($_POST + ['photo' => $photo]);
+        $this->doctors->create($_POST + ['photo' => $photo, 'available_days' => $this->availableDaysFromPost()]);
         flash('success', 'Doctor profile created.');
         redirect(url('doctors'));
     }
@@ -55,8 +55,15 @@ final class DoctorController extends BaseController
                 redirect(url('errors', '403'));
             }
         }
+        $current = $this->doctors->find($doctorId);
         $photo = upload_image('photo', 'doctor_photos', 'doctor');
-        $this->doctors->update($doctorId, $_POST + ['photo' => $photo]);
+        if ($photo && !empty($current['photo'])) {
+            $oldPath = __DIR__ . '/../public/uploads/doctor_photos/' . basename($current['photo']);
+            if (is_file($oldPath)) {
+                unlink($oldPath);
+            }
+        }
+        $this->doctors->update($doctorId, $_POST + ['photo' => $photo, 'available_days' => $this->availableDaysFromPost()]);
         flash('success', 'Doctor profile updated.');
         redirect(url('doctors', Auth::role() === 'doctor' ? 'edit' : 'index', Auth::role() === 'doctor' ? [] : []));
     }
@@ -68,5 +75,12 @@ final class DoctorController extends BaseController
         $this->doctors->delete((int) $_POST['id']);
         flash('success', 'Doctor deleted.');
         redirect(url('doctors'));
+    }
+
+    private function availableDaysFromPost(): string
+    {
+        $allowed = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $selected = array_values(array_intersect($allowed, $_POST['available_days'] ?? []));
+        return implode(',', $selected ?: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']);
     }
 }

@@ -21,7 +21,7 @@
     <a class="btn btn-success mt-3" href="<?= e(url('prescriptions', 'add', ['appointment_id' => $appointment['id']])) ?>">Add Prescription</a>
   <?php endif; ?>
   <?php if ($prescription && $prescription['file_path']): ?>
-    <a class="btn btn-secondary mt-3" href="<?= e(url('prescriptions', 'download', ['id' => $appointment['id']])) ?>">Download Prescription PDF</a>
+    <a class="btn btn-success mt-3" href="<?= e(url('prescriptions', 'download', ['id' => $appointment['id']])) ?>">Download Prescription PDF</a>
   <?php endif; ?>
 </div></div>
 <?php require __DIR__ . '/../partials/page_end.php'; ?>

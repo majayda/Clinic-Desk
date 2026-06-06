@@ -8,3 +8,4 @@ public/uploads/prescriptions/*
 !public/uploads/doctor_photos/index.php
 !public/uploads/prescriptions/index.php
 !public/uploads/prescriptions/.htaccess
+!public/uploads/prescriptions/prescription_*_seed.pdf

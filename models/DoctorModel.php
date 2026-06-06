@@ -28,7 +28,19 @@ final class DoctorModel extends BaseModel
 
     public function findByUser(int $userId): ?array
     {
-        return $this->row($this->execute('SELECT * FROM doctors WHERE user_id=? LIMIT 1', 'i', [$userId]));
+        return $this->row($this->execute(
+            'SELECT d.*, u.name, u.email, u.phone, u.avatar, s.name specialization
+             FROM doctors d JOIN users u ON u.id=d.user_id
+             JOIN specializations s ON s.id=d.specialization_id
+             WHERE d.user_id=? LIMIT 1',
+            'i',
+            [$userId]
+        ));
+    }
+
+    public function findByUserId(int $userId): ?array
+    {
+        return $this->findByUser($userId);
     }
 
     public function create(array $data): void
@@ -61,5 +73,11 @@ final class DoctorModel extends BaseModel
     public function delete(int $id): void
     {
         $this->execute('DELETE FROM doctors WHERE id=?', 'i', [$id]);
+    }
+
+    public function getAvailableDays(int $doctorId): array
+    {
+        $doctor = $this->find($doctorId);
+        return $doctor ? array_map('trim', explode(',', $doctor['available_days'])) : [];
     }
 }

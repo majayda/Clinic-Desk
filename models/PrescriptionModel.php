@@ -19,6 +19,15 @@ final class PrescriptionModel extends BaseModel
         );
     }
 
+    public function update(int $id, array $data): void
+    {
+        $this->execute(
+            'UPDATE prescriptions SET diagnosis=?, medications=?, notes=?, file_path=COALESCE(?, file_path) WHERE id=?',
+            'ssssi',
+            [$data['diagnosis'], $data['medications'], $data['notes'] ?: null, $data['file_path'] ?: null, $id]
+        );
+    }
+
     public function forPatient(int $patientId): array
     {
         return $this->rows($this->execute(
@@ -45,4 +54,3 @@ final class PrescriptionModel extends BaseModel
         ));
     }
 }
-

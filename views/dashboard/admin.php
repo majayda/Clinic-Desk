@@ -6,6 +6,12 @@
   <?php endforeach; ?>
   <div class="col-md-3"><div class="small-box bg-warning"><div class="inner"><h3><?= (int) $stats['today'] ?></h3><p>Appointments Today</p></div></div></div>
 </div>
+<div class="row">
+  <?php $statusColors = ['pending' => 'bg-warning', 'confirmed' => 'bg-info', 'completed' => 'bg-success', 'cancelled' => 'bg-danger']; ?>
+  <?php foreach ($stats['week'] as $status): ?>
+    <div class="col-md-3"><div class="small-box <?= e($statusColors[$status['status']] ?? 'bg-secondary') ?>"><div class="inner"><h3><?= (int) $status['total'] ?></h3><p><?= e(ucfirst($status['status'])) ?> This Week</p></div></div></div>
+  <?php endforeach; ?>
+</div>
 <div class="card">
   <div class="card-header"><h3 class="card-title">Recent Appointments</h3></div>
   <div class="card-body table-responsive">

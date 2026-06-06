@@ -32,12 +32,17 @@ final class AppointmentController extends BaseController
         }
         $page = max(1, (int) ($_GET['p'] ?? 1));
         $paginator = new Paginator($this->appointments->count($filters), ITEMS_PER_PAGE, $page);
+        $today = [];
+        if (Auth::role() === 'doctor' && !empty($filters['doctor_id'])) {
+            $today = $this->appointments->todayForDoctor((int) $filters['doctor_id']);
+        }
         $this->view('appointments/index', [
             'pageTitle' => 'Appointments',
             'appointments' => $this->appointments->list($filters, ITEMS_PER_PAGE, $paginator->offset()),
             'paginator' => $paginator,
             'doctors' => (new DoctorModel())->all(),
             'filters' => $filters,
+            'today' => $today,
         ]);
     }
 
@@ -55,6 +60,14 @@ final class AppointmentController extends BaseController
         $doctor = (new DoctorModel())->find((int) $_POST['doctor_id']);
         if (!$doctor) {
             flash('danger', 'Selected doctor was not found.');
+            redirect(url('appointments', 'book'));
+        }
+        if (($_POST['appt_date'] ?? '') < date('Y-m-d')) {
+            flash('danger', 'Appointment date must not be in the past.');
+            redirect(url('appointments', 'book'));
+        }
+        if (!in_array($_POST['appt_time'] ?? '', $this->timeSlots(), true)) {
+            flash('danger', 'Please choose a valid time slot.');
             redirect(url('appointments', 'book'));
         }
         $day = date('D', strtotime($_POST['appt_date']));
@@ -92,6 +105,21 @@ final class AppointmentController extends BaseController
         redirect(url('appointments', 'show', ['id' => (int) $_POST['id']]));
     }
 
+    public function cancel(): void
+    {
+        Auth::requireRole('patient');
+        require_post_csrf();
+        $appointment = $this->appointments->find((int) $_POST['id']);
+        $this->authorizeAppointment($appointment);
+        if ($appointment['status'] !== 'pending') {
+            flash('danger', 'Only pending appointments can be cancelled.');
+            redirect(url('appointments'));
+        }
+        $this->appointments->updateStatus((int) $_POST['id'], 'cancelled');
+        flash('success', 'Appointment cancelled.');
+        redirect(url('appointments'));
+    }
+
     private function authorizeAppointment(?array $appointment): void
     {
         if (!$appointment) {
@@ -106,5 +134,16 @@ final class AppointmentController extends BaseController
                 redirect(url('errors', '403'));
             }
         }
+    }
+
+    private function timeSlots(): array
+    {
+        $slots = [];
+        for ($hour = 9; $hour <= 16; $hour++) {
+            foreach (['00', '30'] as $minute) {
+                $slots[] = sprintf('%02d:%s', $hour, $minute);
+            }
+        }
+        return $slots;
     }
 }

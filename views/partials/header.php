@@ -1,4 +1,16 @@
-<?php $user = Auth::currentUser(); ?>
+<?php
+$user = Auth::currentUser();
+if ($user) {
+    require_once __DIR__ . '/../../models/UserModel.php';
+    try {
+        $freshUser = (new UserModel())->find(Auth::id());
+        if ($freshUser) {
+            $user = array_merge($user, $freshUser);
+        }
+    } catch (RuntimeException) {
+    }
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>

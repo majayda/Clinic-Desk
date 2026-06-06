@@ -9,7 +9,15 @@
     <div class="form-group"><label>Doctor Photo (JPEG/PNG, max 1MB)</label><input class="form-control" type="file" name="photo" accept="image/jpeg,image/png"></div>
     <?php if (!empty($doctor['photo'])): ?><p><img class="thumb" src="public/uploads/doctor_photos/<?= e($doctor['photo']) ?>" alt=""></p><?php endif; ?>
     <div class="form-group"><label>Consultation Fee</label><input class="form-control" type="number" step="0.01" name="consultation_fee" value="<?= e((string) ($doctor['consultation_fee'] ?? '0.00')) ?>"></div>
-    <div class="form-group"><label>Available Days</label><input class="form-control" name="available_days" value="<?= e($doctor['available_days'] ?? 'Sun,Mon,Tue,Wed,Thu') ?>"></div>
+    <?php $selectedDays = array_map('trim', explode(',', $doctor['available_days'] ?? 'Sun,Mon,Tue,Wed,Thu')); ?>
+    <div class="form-group">
+      <label>Available Days</label>
+      <div>
+        <?php foreach (['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $day): ?>
+          <label class="mr-3"><input type="checkbox" name="available_days[]" value="<?= $day ?>" <?= in_array($day, $selectedDays, true) ? 'checked' : '' ?>> <?= $day ?></label>
+        <?php endforeach; ?>
+      </div>
+    </div>
     <button class="btn btn-primary">Save</button>
   </form>
 </div></div>

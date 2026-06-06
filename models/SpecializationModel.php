@@ -29,4 +29,10 @@ final class SpecializationModel extends BaseModel
     {
         $this->execute('DELETE FROM specializations WHERE id=?', 'i', [$id]);
     }
+
+    public function isSafeToDelete(int $id): bool
+    {
+        $row = $this->row($this->execute('SELECT COUNT(*) total FROM doctors WHERE specialization_id=?', 'i', [$id]));
+        return (int) ($row['total'] ?? 0) === 0;
+    }
 }

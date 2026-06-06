@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/UserModel.php';
+require_once __DIR__ . '/../models/DoctorModel.php';
+require_once __DIR__ . '/../models/SpecializationModel.php';
 
 final class UserController extends BaseController
 {
@@ -17,15 +19,16 @@ final class UserController extends BaseController
     {
         Auth::requireRole('admin');
         $search = trim($_GET['search'] ?? '');
+        $role = in_array($_GET['role'] ?? '', ['admin', 'doctor', 'patient'], true) ? $_GET['role'] : '';
         $page = max(1, (int) ($_GET['p'] ?? 1));
-        $paginator = new Paginator($this->users->count($search), ITEMS_PER_PAGE, $page);
-        $this->view('users/index', ['pageTitle' => 'Users', 'users' => $this->users->paginated(ITEMS_PER_PAGE, $paginator->offset(), $search), 'paginator' => $paginator, 'search' => $search]);
+        $paginator = new Paginator($this->users->count($search, $role), ITEMS_PER_PAGE, $page);
+        $this->view('users/index', ['pageTitle' => 'Users', 'users' => $this->users->paginated(ITEMS_PER_PAGE, $paginator->offset(), $search, $role), 'paginator' => $paginator, 'search' => $search, 'role' => $role]);
     }
 
     public function create(): void
     {
         Auth::requireRole('admin');
-        $this->view('users/form', ['pageTitle' => 'Create User', 'user' => null]);
+        $this->view('users/form', ['pageTitle' => 'Create User', 'user' => null, 'specializations' => (new SpecializationModel())->all()]);
     }
 
     public function store(): void
@@ -33,7 +36,15 @@ final class UserController extends BaseController
         Auth::requireRole('admin');
         require_post_csrf();
         $avatar = upload_image('avatar', 'avatars', 'avatar');
-        $this->users->create($_POST + ['avatar' => $avatar]);
+        $userId = $this->users->create($_POST + ['avatar' => $avatar]);
+        if (($_POST['role'] ?? '') === 'doctor') {
+            $photo = upload_image('photo', 'doctor_photos', 'doctor');
+            (new DoctorModel())->create($_POST + [
+                'user_id' => $userId,
+                'photo' => $photo,
+                'available_days' => $this->availableDaysFromPost(),
+            ]);
+        }
         flash('success', 'User created.');
         redirect(url('users'));
     }
@@ -61,5 +72,26 @@ final class UserController extends BaseController
         $this->users->delete((int) $_POST['id']);
         flash('success', 'User deleted.');
         redirect(url('users'));
+    }
+
+    public function toggleActive(): void
+    {
+        Auth::requireRole('admin');
+        require_post_csrf();
+        $id = (int) $_POST['id'];
+        if ($id === Auth::id()) {
+            flash('danger', 'You cannot deactivate your own account.');
+            redirect(url('users'));
+        }
+        $this->users->toggleActive($id);
+        flash('success', 'User status updated.');
+        redirect(url('users'));
+    }
+
+    private function availableDaysFromPost(): string
+    {
+        $allowed = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $selected = array_values(array_intersect($allowed, $_POST['available_days'] ?? []));
+        return implode(',', $selected ?: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']);
     }
 }

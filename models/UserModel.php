@@ -15,29 +15,61 @@ final class UserModel extends BaseModel
         return $this->row($this->execute('SELECT * FROM users WHERE id = ? LIMIT 1', 'i', [$id]));
     }
 
-    public function paginated(int $limit, int $offset, string $search = ''): array
+    public function findById(int $id): ?array
+    {
+        return $this->find($id);
+    }
+
+    public function paginated(int $limit, int $offset, string $search = '', string $role = ''): array
     {
         $sql = 'SELECT * FROM users';
-        $types = 'ii';
-        $params = [$limit, $offset];
+        $conditions = [];
+        $types = '';
+        $params = [];
         if ($search !== '') {
-            $sql .= ' WHERE name LIKE ? OR email LIKE ? OR role LIKE ?';
             $like = '%' . $search . '%';
-            $types = 'sssii';
-            $params = [$like, $like, $like, $limit, $offset];
+            $conditions[] = '(name LIKE ? OR email LIKE ?)';
+            $types .= 'ss';
+            $params[] = $like;
+            $params[] = $like;
+        }
+        if ($role !== '') {
+            $conditions[] = 'role = ?';
+            $types .= 's';
+            $params[] = $role;
+        }
+        if ($conditions) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
         }
         $sql .= ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        $types .= 'ii';
+        $params[] = $limit;
+        $params[] = $offset;
         return $this->rows($this->execute($sql, $types, $params));
     }
 
-    public function count(string $search = ''): int
+    public function count(string $search = '', string $role = ''): int
     {
-        if ($search === '') {
-            $row = $this->row($this->execute('SELECT COUNT(*) total FROM users'));
-        } else {
+        $sql = 'SELECT COUNT(*) total FROM users';
+        $conditions = [];
+        $types = '';
+        $params = [];
+        if ($search !== '') {
             $like = '%' . $search . '%';
-            $row = $this->row($this->execute('SELECT COUNT(*) total FROM users WHERE name LIKE ? OR email LIKE ? OR role LIKE ?', 'sss', [$like, $like, $like]));
+            $conditions[] = '(name LIKE ? OR email LIKE ?)';
+            $types .= 'ss';
+            $params[] = $like;
+            $params[] = $like;
         }
+        if ($role !== '') {
+            $conditions[] = 'role = ?';
+            $types .= 's';
+            $params[] = $role;
+        }
+        if ($conditions) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        $row = $this->row($this->execute($sql, $types, $params));
         return (int) ($row['total'] ?? 0);
     }
 
@@ -82,9 +114,19 @@ final class UserModel extends BaseModel
         $this->execute('UPDATE users SET name=?, phone=? WHERE id=?', 'ssi', [$name, $phone, $id]);
     }
 
+    public function updatePassword(int $id, string $newHash): void
+    {
+        $this->execute('UPDATE users SET password=? WHERE id=?', 'si', [$newHash, $id]);
+    }
+
     public function delete(int $id): void
     {
         $this->execute('DELETE FROM users WHERE id=?', 'i', [$id]);
+    }
+
+    public function toggleActive(int $id): void
+    {
+        $this->execute('UPDATE users SET is_active = IF(is_active=1, 0, 1) WHERE id=?', 'i', [$id]);
     }
 
     public function byRole(string $role): array
